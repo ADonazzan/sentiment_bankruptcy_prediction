@@ -9,6 +9,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from textstat import flesch_reading_ease
 from transformers import pipeline
+import torch
 import nltk
 from text_analysis.utils import timeit
 
@@ -40,15 +41,17 @@ class SentimentAnalyzer:
         """
         self.sections = None
         self.tokens = None
+        device = 0 if torch.backends.mps.is_available() else -1  # Use MPS if available
+        logging.info(f"Using device: {device}")
         self.sentiment_pipeline = pipeline(
             'sentiment-analysis',
             model='yiyanghkust/finbert-tone',  # FinRoBERTa model for financial text
-            device=-1  # Use -1 for CPU or set a specific GPU device
+            device=device
         )
         self.finbert_pipeline = pipeline(
             'sentiment-analysis',
             model='yiyanghkust/finbert-tone',
-            device=-1
+            device=device
         )
         self.lm_dict = self.load_lm_dictionary()
 

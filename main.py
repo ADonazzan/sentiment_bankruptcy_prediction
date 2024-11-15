@@ -1,6 +1,5 @@
 import pandas as pd
 
-from text_analysis.sec_scraper import SECScraper
 from text_analysis.sentiment_analyzer import SentimentAnalyzer
 from text_analysis.ten_k_extractor import TenKExtractor
 
