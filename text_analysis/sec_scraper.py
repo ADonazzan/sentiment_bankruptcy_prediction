@@ -5,7 +5,10 @@ from retrying import retry, RetryError
 import requests
 import logging
 import os
+import re
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from text_analysis.utils import rate_limiter
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -51,8 +54,10 @@ def generate_headers():
 class SECScraper:
     def __init__(self):
         self.headers = generate_headers()
+        self.cookies = generate_cookies_submissions()
         self.base_url = 'https://data.sec.gov'
         self.cik_code = None
+
 
     def setup_request(self, endpoint):
         case = endpoint.split('/')[-1]
@@ -60,9 +65,38 @@ class SECScraper:
             cookies = generate_cookies_submissions()
             headers = self.headers
         else:
-            cookies = {}
+            cookies = self.cookies
             headers = self.headers
         return cookies, headers
+
+    @retry(stop_max_attempt_number=3, wait_fixed=1000)
+    def _lookup_company_name(self, company_name):
+        url = 'https://www.sec.gov/cgi-bin/cik_lookup'
+        data = {'company': company_name}
+        cookies, headers = self.setup_request('cik_lookup')
+        response = requests.post(url, cookies=cookies, headers=headers, data=data)
+        if response.status_code != 200:
+            raise RetryError(f"Error in company {company_name}: {response.status_code}")
+        return response.text
+
+    @rate_limiter(10)
+    def lookup_company_name(self, company_name):
+        # check if company has ending /DE/ or /TX/ etc. and remove it
+        expression = r'(.+)(/[A-Z]{2,3}/?|(US MARKET AGGREGATE)|(THE)|,|\.)'
+        match = re.match(expression, company_name)
+        if match:
+            company_name = match.group(1)
+            # logging.info(f"Removed ending from company name: {company_name}")
+
+        try:
+            response = self._lookup_company_name(company_name)
+            response_cleaned = BeautifulSoup(response, 'lxml')
+            cik_code = response_cleaned.find('a').text
+            cik_code_strip_zeros = cik_code.lstrip('0')
+            return cik_code_strip_zeros
+        except RetryError as e:
+            logging.error(f"Failed to fetch data for company {company_name} after 3 retries: {e}")
+            return None
 
     @retry(stop_max_attempt_number=3, wait_fixed=1000)
     def _download_submissions_response(self, endpoint):
@@ -90,7 +124,7 @@ class SECScraper:
             submissions = response['filings']['recent']
             return submissions
         except RetryError as e:
-            logging.error(f"Failed to fetch data for company {cik_code} after 3 retries: {e}")
+            logging.error(f"Failed to fetch data for company {self.cik_code} after 3 retries: {e}")
             return None
 
     @retry(stop_max_attempt_number=3, wait_fixed=1000)
@@ -100,7 +134,7 @@ class SECScraper:
         response = requests.get(url, cookies=cookies, headers=headers)
 
         if response.status_code != 200:
-            raise RetryError(f"Error in company {cik_code}: {response.status_code}")
+            raise RetryError(f"Error in company {self.cik_code}: {response.status_code}")
         return response.text
 
     def get_10_k_descriptions(self, cik_code, date_start, date_end):
@@ -140,11 +174,15 @@ class SECScraper:
 
 if __name__ == '__main__':
     # Example of extracting 10-K descriptions
-    cik_code = "320193"
-    print(SECScraper().get_10_k_descriptions(cik_code, '2020-01-01', '2030-12-31'))
+    # cik_code = "320193"
+    # print(SECScraper().get_10_k_descriptions(cik_code, '2020-01-01', '2030-12-31'))
 
     # Example of downloading a 10-K filing
     # cik_code = "320193"
     # accession_number = "000032019324000123"
     # primary_document = "aapl-20240928.htm"
     # print(SECScraper().download_10k(cik_code, accession_number, primary_document))
+
+    # Example of looking up a company name
+    company_name = 'Walmart inc.'
+    print(SECScraper().lookup_company_name(company_name))

@@ -42,10 +42,10 @@ class SentimentAnalyzer:
         self.sections = None
         self.tokens = None
         device = 0 if torch.backends.mps.is_available() else -1  # Use MPS if available
-        logging.info(f"Using device: {device}")
+        logging.info(f"Using device {device} for sentiment analysis")
         self.sentiment_pipeline = pipeline(
             'sentiment-analysis',
-            model='yiyanghkust/finbert-tone',  # FinRoBERTa model for financial text
+            model='soleimanian/financial-roberta-large-sentiment',  # FinRoBERTa model for financial text
             device=device
         )
         self.finbert_pipeline = pipeline(
@@ -75,9 +75,10 @@ class SentimentAnalyzer:
         sentiment = self.finbert_pipeline(text, truncation=True, max_length=512)[0]
         return {"finbert_score": sentiment['score']}
 
+    @timeit
     def analyze_conventional(self, text):
         """
-        Analyzes sentiment using a conventional sentiment model.
+        Analyzes sentiment using FinRoBERTa model.
 
         Parameters:
         ----------
