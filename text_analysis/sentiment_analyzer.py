@@ -13,7 +13,6 @@ import torch
 import nltk
 from text_analysis.utils import timeit
 
-
 load_dotenv()
 lm_dictionary_path = os.getenv("LM_DICTIONARY_PATH")
 
@@ -75,7 +74,6 @@ class SentimentAnalyzer:
         sentiment = self.finbert_pipeline(text, truncation=True, max_length=512)[0]
         return {"finbert_score": sentiment['score']}
 
-    @timeit
     def analyze_conventional(self, text):
         """
         Analyzes sentiment using FinRoBERTa model.
@@ -264,7 +262,15 @@ class SentimentAnalyzer:
                 **aggregated_metrics
             }
             features.append(section_features)
-        return features
+
+        all_features = {}
+        for feature in features:
+            # Create a new dictionary with modified keys
+            new_feature = {f"{feature['section']}_{key}": value for key, value in feature.items()}
+            # Update the all_features dictionary with the new_feature dictionary
+            all_features.update(new_feature)
+
+        return all_features
 
 
 if __name__ == '__main__':

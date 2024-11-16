@@ -82,7 +82,7 @@ class SECScraper:
     @rate_limiter(10)
     def lookup_company_name(self, company_name):
         # check if company has ending /DE/ or /TX/ etc. and remove it
-        expression = r'(.+)(/[A-Z]{2,3}/?|(US MARKET AGGREGATE)|(THE)|,|\.)'
+        expression = expression = r'(.+?)(\([^\)]*\)|/[A-Z]{2,3}/?|(US MARKET AGGREGATE)|(THE)|,|\.)'
         match = re.match(expression, company_name)
         if match:
             company_name = match.group(1)
@@ -101,7 +101,7 @@ class SECScraper:
     @retry(stop_max_attempt_number=3, wait_fixed=1000)
     def _download_submissions_response(self, endpoint):
         # add initial zeros to the cik_code to make it 10 characters long
-        cik_code_long = self.cik_code.zfill(10)
+        cik_code_long = str(self.cik_code).zfill(10)
         url = f'{self.base_url}/{endpoint}/CIK{cik_code_long}.json'
         cookies, headers = self.setup_request(endpoint)
         response = requests.get(url, cookies=cookies, headers=headers)
@@ -109,7 +109,7 @@ class SECScraper:
         if response.status_code != 200:
             raise RetryError(f"Error in company {self.cik_code}: {response.status_code}")
         response_size = sys.getsizeof(response.content)
-        logging.info(f"Downloaded {response_size/1024:.2f} KB for company {self.cik_code}")
+        # logging.info(f"Downloaded {response_size/1024:.2f} KB for company {self.cik_code}")
         return response.json()
 
     def get_submissions(self, endpoint="submissions"):
