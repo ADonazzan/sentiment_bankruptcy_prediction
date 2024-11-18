@@ -1,48 +1,55 @@
 import os
 import pandas as pd
-from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
 from typing import List
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
-def import_csvs_to_postgres(folder_path: str, engine: Engine) -> None:
+
+def merge_csv_files(folder_path: str, output_file: str) -> None:
     """
-    Import all CSV files in the given folder to a PostgreSQL database.
+    Merge all CSV files in the given folder into a single CSV file.
+    Each source file's name is added as a 'dataset' column.
+
+    Args:
+        folder_path (str): Path to the folder containing CSV files
+        output_file (str): Path where the merged CSV file will be saved
     """
+    # Get list of CSV files
     file_list = [file for file in os.listdir(folder_path) if file.endswith('.csv')]
 
+    # Initialize an empty list to store DataFrames
+    dfs = []
+
+    # Read each CSV file and add to the list
     for file in file_list:
         file_path = os.path.join(folder_path, file)
-        table_name = file.split('.')[0]
-        chunksize = 10000  # Adjust this value based on your memory constraints
+        dataset_name = file.split('.')[0]
 
-        # Read the CSV in chunks and insert them into the database
-        for chunk in pd.read_csv(file_path, chunksize=chunksize):
-            chunk['dataset'] = table_name
-            chunk.to_sql(table_name, engine, if_exists='append', index=False)
+        # Read CSV in chunks to handle large files
+        chunks = []
+        for chunk in pd.read_csv(file_path, chunksize=10000, low_memory=False):
+            chunk['dataset'] = dataset_name
+            chunks.append(chunk)
+
+        # Combine chunks for this file
+        if chunks:
+            file_df = pd.concat(chunks, ignore_index=True)
+            dfs.append(file_df)
+
+    # Combine all DataFrames
+    if dfs:
+        merged_df = pd.concat(dfs, ignore_index=True)
+        # Save to CSV
+        merged_df.to_csv(output_file, index=False)
+        print(f"Successfully merged {len(file_list)} files into {output_file}")
+        print(f"Total rows: {len(merged_df)}")
+    else:
+        print("No CSV files found to merge")
 
 
-def merge_postgres_tables(table_names: List[str], engine: Engine, merged_table_name: str) -> None:
-    """
-    Merge the data from the given PostgreSQL tables into a single table.
-    """
-    with engine.connect() as conn:
-        merged_query = f"""
-        SELECT * 
-        FROM {' UNION ALL SELECT * FROM '.join([f'"{name}"' for name in table_names])}
-        """
-        merged_df = pd.read_sql_query(merged_query, conn)
-        merged_df.to_sql(merged_table_name, conn, if_exists='replace', index=False)
+# Example usage
+folder_path = f'{os.getenv("BASE_PATH")}/data/Financial Data'
+output_file = f'{os.getenv("BASE_PATH")}/data/merged_data.csv'
 
-
-engine = create_engine("postgresql://postgres:1234@localhost:5432/postgres")
-
-# Import CSV files into PostgreSQL
-folder_path = f'{os.getenv("BASE_PATH")}/data'
-import_csvs_to_postgres(folder_path, engine)
-
-# Merge the datasets in PostgreSQL
-table_names = [file.split('.')[0] for file in os.listdir(folder_path) if file.endswith('.csv')]
-merge_postgres_tables(table_names, engine, 'merged_data')
+merge_csv_files(folder_path, output_file)

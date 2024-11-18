@@ -94,7 +94,7 @@ class SECScraper:
             cik_code = response_cleaned.find('a').text
             cik_code_strip_zeros = cik_code.lstrip('0')
             return cik_code_strip_zeros
-        except RetryError as e:
+        except (RetryError, ConnectionError) as e:
             logging.error(f"Failed to fetch data for company {company_name} after 3 retries: {e}")
             return None
 
@@ -123,7 +123,7 @@ class SECScraper:
             # Extract the 'filings' -> 'recent' data
             submissions = response['filings']['recent']
             return submissions
-        except RetryError as e:
+        except (RetryError, ConnectionError) as e:
             logging.error(f"Failed to fetch data for company {self.cik_code} after 3 retries: {e}")
             return None
 
@@ -167,7 +167,7 @@ class SECScraper:
         try:
             response = self._download_10k_response(endpoint)
             return response
-        except RetryError as e:
+        except (RetryError, ConnectionError) as e:
             logging.error(f"Failed to fetch data for company {cik_code} after 3 retries: {e}")
             return None
 

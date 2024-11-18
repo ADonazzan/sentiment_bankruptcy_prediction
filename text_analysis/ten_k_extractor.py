@@ -95,18 +95,19 @@ class TenKExtractor:
         # Create the dataframe
         sections = pd.DataFrame([(x.group(), x.start(), x.end()) for x in matches])
 
-        sections.columns = ['item', 'start', 'end']
-        sections['item'] = sections.item.str.lower()
+        if not sections.empty:
+            sections.columns = ['item', 'start', 'end']
+            sections['item'] = sections.item.str.lower()
 
-        # Get rid of unnesesary charcters from the dataframe
-        sections.replace('&#160;', ' ', regex=True, inplace=True)
-        sections.replace('&nbsp;', ' ', regex=True, inplace=True)
-        sections.replace(' ', '', regex=True, inplace=True)
-        sections.replace('\.', '', regex=True, inplace=True)
-        sections.replace('>', '', regex=True, inplace=True)
+            # Get rid of unnecessary characters from the dataframe
+            sections.replace('&#160;', ' ', regex=True, inplace=True)
+            sections.replace('&nbsp;', ' ', regex=True, inplace=True)
+            sections.replace(' ', '', regex=True, inplace=True)
+            sections.replace('\.', '', regex=True, inplace=True)
+            sections.replace('>', '', regex=True, inplace=True)
 
-        # Drop duplicates
-        sections = sections.sort_values('start', ascending=True).drop_duplicates(subset=['item'], keep='last')
+            # Drop duplicates
+            sections = sections.sort_values('start', ascending=True).drop_duplicates(subset=['item'], keep='last')
 
         return sections
 
@@ -150,6 +151,9 @@ class TenKExtractor:
         scraper = SECScraper()
         submissions = scraper.get_10_k_descriptions(cik_code=self.cik_code, date_start=f"{self.year_start}-01-01",
                                                     date_end=f"{self.year_end}-12-31")
+        if submissions is None:
+            return None
+
         ten_k_filings = {}
         for submission in submissions:
             ten_k_filing = scraper.download_10k(cik_code=self.cik_code, accession_number=submission['accessionNumber'])
