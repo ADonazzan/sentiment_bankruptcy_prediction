@@ -40,16 +40,21 @@ def merge_csv_files(folder_path: str, output_file: str) -> None:
     # Combine all DataFrames
     if dfs:
         merged_df = pd.concat(dfs, ignore_index=True)
+        # remove rows which only have the first column and the rest empty
+        merged_df.dropna(axis=0, how='all', subset=merged_df.columns[1:-1], inplace=True)
+        print(f"Total rows: {len(merged_df)}")
+        # remove duplicates
+        merged_df.drop_duplicates(inplace=True)
         # Save to CSV
         merged_df.to_csv(output_file, index=False)
         print(f"Successfully merged {len(file_list)} files into {output_file}")
-        print(f"Total rows: {len(merged_df)}")
     else:
         print("No CSV files found to merge")
 
 
-# Example usage
-folder_path = f'{os.getenv("BASE_PATH")}/data/Financial Data'
-output_file = f'{os.getenv("BASE_PATH")}/data/merged_data.csv'
+if __name__ == '__main__':
+    # Example usage
+    folder_path = f'{os.getenv("BASE_PATH")}/data/sentiment_results'
+    output_file = f'{os.getenv("BASE_PATH")}/data/merged_sentiment_results.csv'
 
-merge_csv_files(folder_path, output_file)
+    merge_csv_files(folder_path, output_file)
