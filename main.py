@@ -17,9 +17,11 @@ load_dotenv()
 def extract_data_companies(file_name: str, excluded_companies_file_names: str = None):
     start_time = datetime.now()
     merged_companies_path = f'{os.getenv("BASE_PATH")}/data/{file_name}'
-    df = pd.read_csv(merged_companies_path)
-    # remove rows with missing CIK codes
+    df = pd.read_csv(merged_companies_path, na_values=['n.d.', 'n.s.'])
     df = df[df['CIK_extracted'].notna()]
+    # Sort the DataFrame by the number of NaN values in each row (ascending)
+    df['na_count'] = df.isna().sum(axis=1)
+    df = df.sort_values(by=['na_count'], ascending=True).drop(columns='na_count')
 
     df['run_analysis'] = True
     df['year_before'] = df['Ultimo anno disp.'] - 1
@@ -28,7 +30,10 @@ def extract_data_companies(file_name: str, excluded_companies_file_names: str = 
         excluded_companies = pd.read_csv(f'{os.getenv("BASE_PATH")}/data/{excluded_companies_file_names}')
         excluded_companies = excluded_companies['cik_code'].tolist()
         df.loc[df['CIK_extracted'].isin(excluded_companies) & (df['year'] == df['year_before']), 'run_analysis'] = False
+        # df.loc[df['Utile netto migl USD'] == 'n.d.', 'run_analysis'] = False
         df.drop(columns=['year_before'], inplace=True)
+
+    df = df[df['run_analysis']]
 
     df.set_index(['CIK_extracted', 'year'], inplace=True)
     # Convert cik codes to string with no decimal points
