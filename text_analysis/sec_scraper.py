@@ -82,7 +82,7 @@ class SECScraper:
     @rate_limiter(10)
     def lookup_company_name(self, company_name):
         # check if company has ending /DE/ or /TX/ etc. and remove it
-        expression = expression = r'(.+?)(\([^\)]*\)|/[A-Z]{2,3}/?|(US MARKET AGGREGATE)|(THE)|,|\.)'
+        expression = r'(.+?)(\([^\)]*\)|/[A-Z]{2,3}/?|(US MARKET AGGREGATE)|(THE)|,|\.)'
         match = re.match(expression, company_name)
         if match:
             company_name = match.group(1)
