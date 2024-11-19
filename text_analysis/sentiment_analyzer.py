@@ -71,7 +71,8 @@ class SentimentAnalyzer:
         """
         Analyzes sentiment using the FinBERT model.
         """
-        sentiment = self.finbert_pipeline(text, truncation=True, max_length=512)[0]
+        # sentiment = self.finbert_pipeline(text, truncation=True, max_length=512)[0]
+        sentiment = {"score": 0}
         return {"finbert_score": sentiment['score']}
 
     def analyze_conventional(self, text):
