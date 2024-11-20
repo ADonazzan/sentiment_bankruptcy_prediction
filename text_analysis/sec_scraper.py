@@ -185,4 +185,4 @@ if __name__ == '__main__':
 
     # Example of looking up a company name
     company_name = 'Walmart inc.'
-    print(SECScraper().lookup_company_name(company_name))
+    print(SECScraper()._lookup_company_name(company_name))
